@@ -64,6 +64,7 @@
     if (cashAmount > 1) {
       // set cash property to the amount inputted in the cash element
       portfolioObj["cash"] = Number(cashAmount);
+      errorMessage = false;
     } else {
       // if there are empty values, error out
       errorMessage = true;
@@ -76,7 +77,7 @@
 
   const calculateMetrics = async () => {
     updatePortfolio();
-
+    console.log(errorMessage);
     const generateDate = () => {
       // current date in JS Date object
       let currentDate = new Date();
@@ -138,6 +139,7 @@
           /**
            * Alert the user
            */
+          console.log("HELLO??");
           errorMessage = true;
           deleteStock(TICKER);
           return false;
@@ -146,6 +148,9 @@
     }
     if (stockAmount < 1 || stockName.length < 1) {
       errorMessage = true; 
+    }
+    if (cashAmount > 1) {
+      errorMessage = false; 
     }
     clearInputs();
     updateChart();
@@ -184,7 +189,6 @@
       parentElement.innerHTML = "";
       parentElement.innerHTML = '<canvas size=400 id="doughnutChart" />';
       const childElement = document.getElementById("doughnutChart");
-
       // @ts-ignore
 
       // labels are all the stock names, plus cash if it is inputted
@@ -210,6 +214,23 @@
         },
         options : {
           maintainAspectRatio: false,
+          plugins: {
+            tooltip: {
+                callbacks: {
+                    label: function(context) {
+                        let label = context.dataset.label || '';
+
+                        if (label) {
+                            label += ': ';
+                        }
+                        if (context.parsed !== null) {
+                            label += new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(context.parsed);
+                        }
+                        return label;
+                    }
+                }
+            }
+        }
         }
       });
       errorMessage = false;
@@ -273,18 +294,26 @@
     stockObjGraph = tempObj;
     portfolioObj = tempPortfolioObj;
     console.log(portfolioObj);
-
+    localStorage.setItem("stockObjGraph", JSON.stringify(stockObjGraph));
+          localStorage.setItem("stockMetrics", JSON.stringify(stockMetrics));
+          localStorage.setItem("cashAmount", String(cashAmount));
+          localStorage.setItem("portfolioObject", JSON.stringify(portfolioObj));
     // delete portfolioObj["stocks"][TICKER];
     updateChart();
   };
   const deleteCash = () => {
     cashAmount = 0;
+    localStorage.setItem("stockObjGraph", JSON.stringify(stockObjGraph));
+          localStorage.setItem("stockMetrics", JSON.stringify(stockMetrics));
+          localStorage.setItem("cashAmount", String(cashAmount));
+          localStorage.setItem("portfolioObject", JSON.stringify(portfolioObj));
     updateChart();
   };
 
   const clearInputs = () => {
     stockName = "";
-    stockAmount = 0;
+    stockAmount = "";
+    // cashAmount = 0;/ 
   };
 </script>
 
@@ -307,7 +336,7 @@
       <div class="d-flex align-items-center justify-content-center">
         <i class="fa-solid fa-lg fa-money-bill-trend-up" />
 
-        <span class="fs-2 ps-2">Stock Visualization</span>
+        <span class="fs-2 ps-2">Portfolio Analyzer</span>
       </div>
 
     </a>
