@@ -121,7 +121,7 @@
         return date;
       };
       let DATE = generateDate();
-      DATE = "2022-01-18";
+      DATE = "2023-01-18";
       console.log(DATE);
       if (Object.keys(portfolioObj["stocks"]).length >= 1) {
         for (const [TICKER, AMOUNT] of Object.entries(portfolioObj["stocks"])) {
