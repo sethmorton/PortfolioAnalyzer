@@ -23,14 +23,34 @@
   let portfolioObj = {
     stocks: {},
     cash: 0,
-    customAsset: {},
   };
+  /**
+   * Is the DOM loaded or not?
+   */
   let loaded = false;
+  /**
+   * Using Svelte, we can call the updateChart() method whenever the application variable portfolioObj is changed.
+   */
   $: portfolioObj, updateChart();
-  let stockObjGraph = {};
+  /**
+   * this object is what's used in the creation of the doughnut chart visualizing the portfolio.
+   */
+  let stockVisualizationObject = {};
+  /**
+   * This variable is bound to the cash input in the DOM
+   */
   let cashAmount = 0;
+  /**
+   * Bound to stockName input
+   */
   let stockName = "";
+  /**
+   * Bound to stockAmount input
+   */
   let stockAmount = 0;
+  /**
+   * This object will contain the calculated metric calculations used for generating the metric cards in the website.
+   */
   let stockMetrics = {};
   /**********         END VARIABLE DEFINE         **********/
 
@@ -39,8 +59,10 @@
     if (localStorage.getItem("portfolioObject") !== null) {
       portfolioObj = JSON.parse(localStorage.getItem("portfolioObject"));
     }
-    if (localStorage.getItem("stockObjGraph") !== null) {
-      stockObjGraph = JSON.parse(localStorage.getItem("stockObjGraph"));
+    if (localStorage.getItem("stockVisualizationObject") !== null) {
+      stockVisualizationObject = JSON.parse(
+        localStorage.getItem("stockVisualizationObject")
+      );
     }
     if (localStorage.getItem("cashAmount") !== null) {
       cashAmount = Number(localStorage.getItem("cashAmount"));
@@ -51,139 +73,166 @@
   });
 
   const updatePortfolio = () => {
-    // check for empty values
-    if (stockName.length > 1 && stockAmount > 1) {
-      // add to the stocks property of portfolioObject with a key of the inputted stock name and value being the amount
-      portfolioObj["stocks"][stockName] = stockAmount;
-    } else {
-      // if there are empty values, error out
-      console.log("HELLO?");
-      errorMessage = true;
-    }
-    // check for empty values
-    if (cashAmount > 1) {
-      // set cash property to the amount inputted in the cash element
-      portfolioObj["cash"] = Number(cashAmount);
+    /**
+     * Let's check for user-inputted errorrs
+     */
+
+    /**
+     * If stock is inputted
+     */
+    if (stockName.length >= 1 || stockAmount >= 1) {
       errorMessage = false;
+      /**
+       * Adds to "stock" property of portfolioObj, with the value being the amount
+       */
+      portfolioObj["stocks"][stockName] = stockAmount;
+    } else if (cashAmount >= 1) {
+      errorMessage = false;
+      /**
+       * Set Cash property to cashAmount - making sure its an integer
+       */
+      portfolioObj["cash"] = Number(cashAmount);
     } else {
-      // if there are empty values, error out
       errorMessage = true;
     }
-    if (errorMessage == true) {
-      return false; 
-    }
-    return true;
   };
 
   const calculateMetrics = async () => {
     updatePortfolio();
-    console.log(errorMessage);
-    const generateDate = () => {
-      // current date in JS Date object
-      let currentDate = new Date();
-      // temporary date for weekend detection
-      let tempDate = currentDate;
-      // if the tempDate is on a Saturday or Sunday, minus a day from the currentDate object
-      while (tempDate.getDay() === 6 || tempDate.getDay() === 0) {
-        tempDate.setDate(currentDate.getDate() - 1);
-      }
-      let date = "";
-      // get year
-      date += tempDate.getFullYear();
-      date += "-";
-      // this ensures that if the digit is less than 10, it adds a 0 in front (Eg. - 04, instead of 5)
-      date += ("0" + (tempDate.getMonth() + 1)).slice(-2);
-      date += "-";
-      date += ("0" + tempDate.getDate()).slice(-2);
-      // example date - "2022-01-06";
-      return date;
-    };
-    let DATE = generateDate();
-    DATE = `2022-12-30`;
-    console.log(DATE);
-    if (Object.keys(portfolioObj["stocks"]).length >= 1) {
-      for (const [key, value] of Object.entries(portfolioObj["stocks"])) {
-        // When a user inputs a ticker,
-        const TICKER = key;
-        const AMOUNT = Number(value);
-        const PRICE_URI = `https://www.alphavantage.co/query?function=TIME_SERIES_DAILY_ADJUSTED&symbol=${TICKER}&apikey=${API_KEY}`;
-        const INFO_URI = `https://www.alphavantage.co/query?function=OVERVIEW&symbol=${TICKER}&apikey=${API_KEY}`;
-        const INFO_DATA = await retreiveData(TICKER, "INFO", INFO_URI);
-        const PRICE_DATA = await retreiveData(TICKER, "PRICE", PRICE_URI);
-        console.log(PRICE_DATA);
-        let stockPrice = 0;
-        /**
-         * Making sure the inputted ticker is good
-         */
-        // if the info_data response object keys is greater than one, and the "note" attribute (only given if there is an error)
-        // is undefined, proceed - else, throw error. 
-        if (
-          Object.keys(INFO_DATA).length >= 1 &&
-          INFO_DATA["note"] === undefined
-        ) {
-
-          stockPrice = Number(
-            await PRICE_DATA["Time Series (Daily)"][`${DATE}`]["4. close"]
-          );
-          stockObjGraph[key] = Number((stockPrice * AMOUNT).toFixed(1));
-          stockMetrics[TICKER] = {};
-          stockMetrics[TICKER]["Beta"] = INFO_DATA["Beta"];
-          stockMetrics[TICKER]["EPS"] = INFO_DATA["EPS"];
-          stockMetrics[TICKER]["Dividend"] = INFO_DATA["DividendYield"];
-          localStorage.setItem("stockObjGraph", JSON.stringify(stockObjGraph));
-          localStorage.setItem("stockMetrics", JSON.stringify(stockMetrics));
-          localStorage.setItem("cashAmount", String(cashAmount));
-          errorMessage = false;
-        } else {
-
+    if (errorMessage == false) {
+      const generateDate = () => {
+        // current date in JS Date object
+        let currentDate = new Date();
+        // temporary date for weekend detection
+        let tempDate = currentDate;
+        // if the tempDate is on a Saturday or Sunday, minus a day from the currentDate object
+        while (tempDate.getDay() === 6 || tempDate.getDay() === 0) {
+          tempDate.setDate(currentDate.getDate() - 1);
+        }
+        let date = "";
+        // get year
+        date += tempDate.getFullYear();
+        date += "-";
+        // this ensures that if the digit is less than 10, it adds a 0 in front (Eg. - 04, instead of 5)
+        date += ("0" + (tempDate.getMonth() + 1)).slice(-2);
+        date += "-";
+        date += ("0" + tempDate.getDate()).slice(-2);
+        // example date - "2022-01-06";
+        return date;
+      };
+      let DATE = generateDate();
+      console.log(DATE);
+      if (Object.keys(portfolioObj["stocks"]).length >= 1) {
+        for (const [TICKER, AMOUNT] of Object.entries(portfolioObj["stocks"])) {
+          // When a user inputs a ticker,
+          // const TICKER = key;
+          // const AMOUNT = Number(value);
+          const PRICE_URL = `https://www.alphavantage.co/query?function=TIME_SERIES_DAILY_ADJUSTED&symbol=${TICKER}&apikey=${API_KEY}`;
+          const INFO_URL = `https://www.alphavantage.co/query?function=OVERVIEW&symbol=${TICKER}&apikey=${API_KEY}`;
+          const INFO_DATA = await retreiveData(TICKER, "INFO", INFO_URL);
+          const PRICE_DATA = await retreiveData(TICKER, "PRICE", PRICE_URL);
+          console.log(PRICE_DATA);
+          let stockPrice = 0;
           /**
-           * Alert the user
+           * Making sure the inputted ticker is good
            */
-          console.log("HELLO??");
-          errorMessage = true;
-          deleteStock(TICKER);
-          return false;
+          // if the info_data response object keys is greater than one, and the "note" attribute (only given if there is an error)
+          // is undefined, proceed - else, throw error.
+          if (
+            Object.keys(INFO_DATA).length >= 1 &&
+            INFO_DATA["note"] === undefined
+          ) {
+            /**
+             * Using the generated Date + the properties that AlphaVantage gives us.
+             */
+            stockPrice = Number(
+              await PRICE_DATA["Time Series (Daily)"][`${DATE}`]["4. close"]
+            );
+            stockVisualizationObject[TICKER] = Number(
+              (stockPrice * AMOUNT).toFixed(1)
+            );
+            stockMetrics[TICKER] = {};
+            stockMetrics[TICKER]["Beta"] = INFO_DATA["Beta"];
+            stockMetrics[TICKER]["EPS"] = INFO_DATA["EPS"];
+            stockMetrics[TICKER]["Dividend"] = INFO_DATA["DividendYield"];
+            localStorage.setItem(
+              "stockVisualizationObject",
+              JSON.stringify(stockVisualizationObject)
+            );
+            localStorage.setItem("stockMetrics", JSON.stringify(stockMetrics));
+            localStorage.setItem("cashAmount", String(cashAmount));
+            errorMessage = false;
+            updateChart();
+          } else {
+            /**
+             * Alert the user
+             */
+            errorMessage = true;
+            deleteStock(TICKER);
+          }
         }
       }
     }
-    if (stockAmount < 1 || stockName.length < 1) {
-      errorMessage = true; 
-    }
-    if (cashAmount > 1) {
-      errorMessage = false; 
-    }
     clearInputs();
-    updateChart();
   };
   const updateChart = async () => {
     if (loaded) {
       let labels = [];
       let data = [];
-
-      // console.log(Object.keys(stockObjGraph));
-      console.log(stockObjGraph);
-      console.log(portfolioObj);
-      if (stockObjGraph == undefined) {
-        stockObjGraph = {};
+      /**
+       * Object to loop through for generating labels and data for doughnut chart
+       */
+      if (stockVisualizationObject == undefined) {
+        stockVisualizationObject = {};
       }
-      if (cashAmount > 1) {
+      /**
+       * Add to labels and data the word "Cash" and how much cash has been inputted.
+       */
+      if (cashAmount >= 1) {
         labels = ["Cash", ...labels];
         data = [cashAmount, ...data];
       }
-      // console.log(stockObjGraph);
+      /**
+       * If there's nothing in the portfolio, output blank
+       */
       if (Object.keys(portfolioObj["stocks"]).length < 1 && cashAmount < 1) {
         console.log("hello");
         labels = ["Blank"];
         data = [100];
       }
-      // stockObjGraph["Cash"] = cashAmount;
-      for (const [key, value] of Object.entries(stockObjGraph)) {
+      for (const [key, value] of Object.entries(stockVisualizationObject)) {
         console.log(key, value);
         labels = [key, ...labels];
         data = [value, ...data];
       }
+
+      /**
+       * In order to maintain colors throughout the graph, we must sort the labels alphabetically to maintain the same index order even if new elements are pushed to element
+       * We need to maintain index order because the backgroundColor array matches color to label by index
+       */
+      console.log(labels, data);
+      /**
+       * Alphabetically sorted
+       */
+      /**
+       * This is the original labels array we're going to get indices from
+       */
+      const LABELS_CONST = labels;
+      const SORTED_LABELS = [...labels].sort();
+      /**
+       * Create an array to store data based on sorted labels index
+       */
+      let sortedData = new Array(SORTED_LABELS.length);
+      for (let i = 0; i < SORTED_LABELS.length; i++) {
+        // Eg - AAPL
+        const TICKER = SORTED_LABELS[i];
+        // INDEX NUMBER OF AAPL IN ORIGINAL LABELS ARRAY
+        const NUM = LABELS_CONST.indexOf(`${TICKER}`);
+        // SET NEW DATA TO SELECTED INDEX OF DATA
+        sortedData[i] = data[NUM];
+      }
       calculateAverages(data);
-      console.log(stockObjGraph);
+      console.log(stockVisualizationObject);
       console.log(labels);
       const parentElement = document.getElementById("graph");
       parentElement.innerHTML = "";
@@ -192,46 +241,52 @@
       // @ts-ignore
 
       // labels are all the stock names, plus cash if it is inputted
-      // data is all the stock amount multiplied by latest price 
+      // data is all the stock amount multiplied by latest price
       chart = new Chart(childElement, {
         type: "doughnut",
         data: {
           // all stock names + cash
-          labels: labels,
+          labels: SORTED_LABELS,
           datasets: [
             {
               label: "Portfolio",
               // stock values
-              data: data,
+              data: sortedData,
               backgroundColor: [
-                "rgb(255, 99, 132)",
-                "rgb(54, 162, 235)",
-                "rgb(255, 205, 86)",
+                "rgb(255, 235, 59)",
+                "rgb(251, 140, 0)",
+                "rgb(205, 220, 57)",
+                "rgb(156, 204, 101)",
+                "rgb(100, 181, 246)",
+                "rgb(149, 117, 205)",
               ],
               hoverOffset: 4,
             },
           ],
         },
-        options : {
+        options: {
           maintainAspectRatio: false,
           plugins: {
             tooltip: {
-                callbacks: {
-                    label: function(context) {
-                        let label = context.dataset.label || '';
+              callbacks: {
+                label: function (context) {
+                  let label = context.dataset.label || "";
 
-                        if (label) {
-                            label += ': ';
-                        }
-                        if (context.parsed !== null) {
-                            label += new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(context.parsed);
-                        }
-                        return label;
-                    }
-                }
-            }
-        }
-        }
+                  if (label) {
+                    label += ": ";
+                  }
+                  if (context.parsed !== null) {
+                    label += new Intl.NumberFormat("en-US", {
+                      style: "currency",
+                      currency: "USD",
+                    }).format(context.parsed);
+                  }
+                  return label;
+                },
+              },
+            },
+          },
+        },
       });
       errorMessage = false;
       return true;
@@ -242,7 +297,10 @@
   let averageDiv = 0;
   const calculateAverages = (data) => {
     // reduce the data down into its total value
-    let portfolioTotalValue = data.reduce((/** @type {number} */ total, /** @type {number} */ next) => total + next, 0);
+    let portfolioTotalValue = data.reduce(
+      (/** @type {number} */ total, /** @type {number} */ next) => total + next,
+      0
+    );
     // set initial variables for calculation
     let totalDivIncome = 0;
     let totalBeta = 0;
@@ -250,18 +308,19 @@
     // loop through the stockMetrics object, which is tied to the stockObject
     for (const [key, value] of Object.entries(stockMetrics)) {
       // total div income + the value of the looped stock multiplied by annual dividend
-      totalDivIncome = totalDivIncome + stockObjGraph[key] * value["Dividend"];
+      totalDivIncome =
+        totalDivIncome + stockVisualizationObject[key] * value["Dividend"];
       // total beta + the value of the looped stock multiplied by annual beta
-      totalBeta = totalBeta + stockObjGraph[key] * value["Beta"];
+      totalBeta = totalBeta + stockVisualizationObject[key] * value["Beta"];
       // total eps  + the value of the looped stock multiplied by annual eps
-      totalEPS = totalEPS + stockObjGraph[key] * value["EPS"];
-    };
+      totalEPS = totalEPS + stockVisualizationObject[key] * value["EPS"];
+    }
     // to get average, divide the total income by the portfolio value
     averageDiv = Number(totalDivIncome / portfolioTotalValue);
     averageBeta = Number(totalBeta / portfolioTotalValue);
     averageEPS = Number(totalEPS / portfolioTotalValue);
   };
-  const retreiveData = async (  
+  const retreiveData = async (
     /** @type {string} */ ticker,
     /** @type {string} */ mode,
     /** @type {RequestInfo | URL} */ URI
@@ -269,10 +328,11 @@
     // creates a custom key for localStorage
     // ticker is Stock ticker, and mode is whether the data is price data or stock overview data
     const KEY = `${ticker}-${mode}`;
-    // sets portfolioObject key in localStorage
+    // sets portfolioObject key in localStorage using native serialization, converting Object data type to String data type
     localStorage.setItem("portfolioObject", JSON.stringify(portfolioObj));
     // if the object is stored, return it using the key
     if (localStorage.getItem(KEY) !== null) {
+      // deserializes the String, and converts it back to object format for manipulation
       return JSON.parse(localStorage.getItem(KEY));
     }
     // if it's not, fetch it
@@ -284,36 +344,42 @@
     }
   };
   const deleteStock = (/** @type {string} */ TICKER) => {
-    let tempObj = stockObjGraph;
+    let tempObj = stockVisualizationObject;
     let tempPortfolioObj = portfolioObj;
     let tempMetrics = stockMetrics;
     delete tempObj[TICKER];
     delete tempMetrics[TICKER];
     delete tempPortfolioObj["stocks"][TICKER];
     stockMetrics = tempMetrics;
-    stockObjGraph = tempObj;
+    stockVisualizationObject = tempObj;
     portfolioObj = tempPortfolioObj;
     console.log(portfolioObj);
-    localStorage.setItem("stockObjGraph", JSON.stringify(stockObjGraph));
-          localStorage.setItem("stockMetrics", JSON.stringify(stockMetrics));
-          localStorage.setItem("cashAmount", String(cashAmount));
-          localStorage.setItem("portfolioObject", JSON.stringify(portfolioObj));
+    localStorage.setItem(
+      "stockVisualizationObject",
+      JSON.stringify(stockVisualizationObject)
+    );
+    localStorage.setItem("stockMetrics", JSON.stringify(stockMetrics));
+    localStorage.setItem("cashAmount", String(cashAmount));
+    localStorage.setItem("portfolioObject", JSON.stringify(portfolioObj));
     // delete portfolioObj["stocks"][TICKER];
     updateChart();
   };
   const deleteCash = () => {
     cashAmount = 0;
-    localStorage.setItem("stockObjGraph", JSON.stringify(stockObjGraph));
-          localStorage.setItem("stockMetrics", JSON.stringify(stockMetrics));
-          localStorage.setItem("cashAmount", String(cashAmount));
-          localStorage.setItem("portfolioObject", JSON.stringify(portfolioObj));
+    localStorage.setItem(
+      "stockVisualizationObject",
+      JSON.stringify(stockVisualizationObject)
+    );
+    localStorage.setItem("stockMetrics", JSON.stringify(stockMetrics));
+    localStorage.setItem("cashAmount", String(cashAmount));
+    localStorage.setItem("portfolioObject", JSON.stringify(portfolioObj));
     updateChart();
   };
 
   const clearInputs = () => {
     stockName = "";
     stockAmount = "";
-    // cashAmount = 0;/ 
+    // cashAmount = 0;/
   };
 </script>
 
@@ -338,7 +404,6 @@
 
         <span class="fs-2 ps-2">Portfolio Analyzer</span>
       </div>
-
     </a>
   </div>
 </nav>
@@ -346,28 +411,35 @@
 <div class="container-fluid bg-light min-vh-100 p-0">
   <div class="row flex-nowrap">
     <div class="col-3 bg-secondary min-vh-100">
-<div class="d-flex flex-column">
-    
-    <div class="d-flex align-items-center justify-content-center text-white">
-      <i class="fa-solid fa-lg fa-shop" />
-      <span class="fs-2 ps-2">Visualization</span>
-    </div>
+      <div class="d-flex flex-column">
+        <div
+          class="d-flex align-items-center justify-content-center text-white"
+        >
+          <i class="fa-solid fa-lg fa-shop" />
+          <span class="fs-2 ps-2">Visualization</span>
+        </div>
 
-    <div class="d-flex align-items-center justify-content-center text-white">
-      <i class="fa-solid fa-lg fa-shop" />
-      <span class="fs-2 ps-2">Table</span>
-    </div>
+        <div
+          class="d-flex align-items-center justify-content-center text-white"
+        >
+          <i class="fa-solid fa-lg fa-shop" />
+          <span class="fs-2 ps-2">Table</span>
+        </div>
 
-    <div class="d-flex align-items-center justify-content-center text-white">
-      <i class="fa-solid fa-lg fa-shop" />
-      <span class="fs-2 ps-2">Averages</span>
-    </div>
+        <div
+          class="d-flex align-items-center justify-content-center text-white"
+        >
+          <i class="fa-solid fa-lg fa-shop" />
+          <span class="fs-2 ps-2">Averages</span>
+        </div>
 
-    <div class="d-flex align-items-center justify-content-center text-white">
-      <i class="fa-solid fa-lg fa-shop" />
-      <span class="fs-2 ps-2 text-white">Add to Portfolio</span>
-    </div>
-</div>
+        <div
+          class="d-flex align-items-center justify-content-center text-white"
+        >
+          <i class="fa-solid fa-lg fa-shop" />
+          <span class="fs-2 ps-2 text-white">Add to Portfolio</span>
+        </div>
+      </div>
       <!-- <div class="row">
         <div class="col-6 p-0">
           <div class="d-flex flex-column align-items-center">
@@ -402,11 +474,8 @@
           
         </div>
       </div> -->
-
     </div>
     <div class="col-9">
-
-
       <div class="row px-5 py-3">
         <div class="col-sm-12">
           <div class="card">
